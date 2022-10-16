@@ -1,6 +1,7 @@
 
 import chess
 import editdistance
+from time import sleep
 
 from chs.client.ending import GameOver
 from chs.engine.parser import FenParser
@@ -100,10 +101,37 @@ class Client(object):
     else:
       print('')
     try:
-      move = input('{}{}{}┏━ Your move ━━━━━━━━━━━┓ \n{}┗{}{}'.format(
+
+      print('{}{}{}┏━ Your move ━━━━━━━━━━━━━━━━━━━━━┓ \n{}┗{}{}{}waiting for user move on board{}'.format(
         Styles.PADDING_SMALL, Colors.WHITE, Colors.BOLD,\
-        Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET)
+        Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET, Colors.GRAY, Colors.RESET)
       )
+
+      # this is where we need to input our move from the Arduino
+
+      # write a function that was able to accomplish what we did in the lab between Arduino and Raspberry Pi
+      # waits until it gets input from the Arduino and then sets that input equal to move variable
+
+      # add a button on the board that indicates we want a hint
+      # all that needs to be done is send the string 'hint'
+      # if we send the string 'hint' then send the Arduino acknowledgement that we have received, but do nothing so logic stays same in Arduino code
+      # if we want, we can try and send back the move recommended by the engine, but all the help stuff is after we get initial comm going
+
+      # think about what to do if illegal move, will change logic a bit but also down the road after initial comms
+
+      # adding a back button would be hard to do with the automatic moves, so maybe leave that out
+
+      move = input()
+
+      self.ui_board.generate(self.fen(), self.board, self.engine)
+
+
+      print('\n{}{}{}┏━ Your move ━━━━━━━━━━━┓ \n{}┗{}{}'.format(
+        Styles.PADDING_SMALL, Colors.WHITE, Colors.BOLD,\
+        Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET), move)
+
+      sleep(2)
+
       if move == self.BACK:
         self.board.pop()
         self.board.pop()
