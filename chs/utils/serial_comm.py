@@ -1,37 +1,35 @@
 import serial
 import time
 
-ser = serial.Serial('/dev/ttyACM0', 9600, timeout=None)
-set.reset_input_buffer()
-counter = 0
+class SerialCommunication:
+    def __init__(self, serial_port, baud_rate):
+        self.ser = serial.Serial(serial_port, baud_rate, timeout=None)
+        self.ser.reset_input_buffer()
 
-print('Waiting for input from Arduino...')
+    def wait_for_move(self):
+        # Receive the move made from the Arduino in square notation ('e2e4')
+        user_move = self.ser.read()
+        time.sleep(1)
+        bytesRemaining = self.ser.inWaiting()
+        user_move += self.ser.read(bytesRemaining)
+        user_move = user_move.decode('utf-8').rstrip()
 
-while True:
-    # wait for Arduino to send us "Button Pressed"
-    # really this would be a game board move in the real program like 'a1a2'
-    tdata = ser.read()
-    time.sleep(1)
-    bytesRemaining = ser.inWaiting()
-    tdata += ser.read(bytesRemaining)
-    tdata = tdata.decode('utf-8').rstrip()
+        # return the move as a string for input to the chess game
+        return user_move
 
-    # instead of printing, we send the move to the AI
-    print(tdata)
 
-    # we need to get the move from the AI instead of hardcoded
-    moves = ['g1g1', 'f1f5', 'g1h3', 'a1a2', 'b1b2']
+    def send_move(self, move):
+        # Send the move to the Arduino in square notation ('e5e7')
+        self.ser.write(str(move).encode())
 
-    # send Arduino the move that we made in 'a1a2 format
-    # may need to write a conversion function if AI provides us with algebraic notation
-    ser.write(str(moves[counter]).encode())
-    counter += 1
+        # THE REST OF THE CODE IN THIS FUNCTION IS FOR TESTING PURPOSES ONLY
+        # Wait for acknowledgement from Arduino that it received AI move
+        # AI_move = self.ser.read()
+        # time.sleep(1)
+        # bytesRemaining = self.ser.inWaiting()
+        # AI_move += self.ser.read(bytesRemaining)
+        # AI_move = AI_move.decode('utf-8').rstrip()
 
-    # Wait for acknowledgement from Arduino that it received AI move
-    tdata = ser.read()
-    time.sleep(1)
-    bytesRemaining = ser.inWaiting()
-    tdata += ser.read(bytesRemaining)
-    tdata = tdata.decode('utf-8').rstrip()
+        # print(AI_move)
+        # time.sleep(2)
 
-    print(tdata)

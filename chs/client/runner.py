@@ -8,6 +8,7 @@ from chs.engine.parser import FenParser
 from chs.engine.stockfish import Engine
 from chs.ui.board import Board
 from chs.utils.core import Colors, Styles
+from chs.utils.serial_comm import SerialCommunication
 
 
 class GameOverException(Exception):
@@ -39,6 +40,7 @@ class Client(object):
     self.board.san_move_stack_white = []
     self.board.san_move_stack_black = []
     self.board.help_engine_hint = None
+    self.serial = SerialCommunication('/dev/ttyACM0', 9600)
 
   def run(self):
     try:
@@ -107,10 +109,8 @@ class Client(object):
         Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET, Colors.GRAY, Colors.RESET)
       )
 
-      # this is where we need to input our move from the Arduino
-
-      # write a function that was able to accomplish what we did in the lab between Arduino and Raspberry Pi
-      # waits until it gets input from the Arduino and then sets that input equal to move variable
+      # get the user move from Arduino
+      move = self.serial.wait_for_move()
 
       # add a button on the board that indicates we want a hint
       # all that needs to be done is send the string 'hint'
@@ -121,7 +121,6 @@ class Client(object):
 
       # adding a back button would be hard to do with the automatic moves, so maybe leave that out
 
-      move = input()
 
       self.ui_board.generate(self.fen(), self.board, self.engine)
 
@@ -161,6 +160,10 @@ class Client(object):
       Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET, Colors.GRAY, Colors.RESET)
     )
     result = self.engine.play(self.board)
+
+    # send the AI move to the Arduino
+    self.serial.send_move(result.move)
+
     if self.play_as == chess.WHITE:
       self.board.san_move_stack_black.append(self.board.san(result.move))
     else:
