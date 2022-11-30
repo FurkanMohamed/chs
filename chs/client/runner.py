@@ -109,8 +109,15 @@ class Client(object):
         Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET, Colors.GRAY, Colors.RESET)
       )
 
-      # get the user move from Arduino
-      move = self.serial.wait_for_move()
+      # get the user move from commandline / Speech to Text
+      move = input()
+
+      # can now do error checking and can get hints if we want, just write an if statement checking what the value of 'move' is
+      # send the move to the Arduino for it to make on the board
+      self.serial.send_move(move)
+
+      # wait for an acknowledgement from Arduino before generating the board and moving on
+      acknowledge = self.serial.wait_for_move()
 
       # add a button on the board that indicates we want a hint
       # all that needs to be done is send the string 'hint'
@@ -169,6 +176,9 @@ class Client(object):
     else:
       self.board.san_move_stack_white.append(self.board.san(result.move))
     self.board.push(result.move)
+
+    # before exiting the function, ensure that the Arduino has sent acknowledge that move was completed on the chess board
+    acknowledge = self.serial.wait_for_move()
 
   def fen(self):
     return self.board.fen()
