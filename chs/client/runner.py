@@ -1,12 +1,14 @@
 
 import chess
 import editdistance
+from time import sleep
 
 from chs.client.ending import GameOver
 from chs.engine.parser import FenParser
 from chs.engine.stockfish import Engine
 from chs.ui.board import Board
 from chs.utils.core import Colors, Styles
+from chs.utils.serial_comm import SerialCommunication
 
 
 class GameOverException(Exception):
@@ -38,6 +40,7 @@ class Client(object):
     self.board.san_move_stack_white = []
     self.board.san_move_stack_black = []
     self.board.help_engine_hint = None
+    self.serial = SerialCommunication('/dev/ttyACM0', 9600)
 
   def run(self):
     try:
@@ -100,10 +103,41 @@ class Client(object):
     else:
       print('')
     try:
-      move = input('{}{}{}┏━ Your move ━━━━━━━━━━━┓ \n{}┗{}{}'.format(
+
+      print('{}{}{}┏━ Your move ━━━━━━━━━━━━━━━━━━━━━┓ \n{}┗{}{}{}waiting for user move on board{}'.format(
         Styles.PADDING_SMALL, Colors.WHITE, Colors.BOLD,\
-        Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET)
+        Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET, Colors.GRAY, Colors.RESET)
       )
+
+      # get the user move from commandline / Speech to Text
+      move = input()
+
+      # can now do error checking and can get hints if we want, just write an if statement checking what the value of 'move' is
+      # send the move to the Arduino for it to make on the board
+      self.serial.send_move(move)
+
+      # wait for an acknowledgement from Arduino before generating the board and moving on
+      acknowledge = self.serial.wait_for_move()
+
+      # add a button on the board that indicates we want a hint
+      # all that needs to be done is send the string 'hint'
+      # if we send the string 'hint' then send the Arduino acknowledgement that we have received, but do nothing so logic stays same in Arduino code
+      # if we want, we can try and send back the move recommended by the engine, but all the help stuff is after we get initial comm going
+
+      # think about what to do if illegal move, will change logic a bit but also down the road after initial comms
+
+      # adding a back button would be hard to do with the automatic moves, so maybe leave that out
+
+
+      self.ui_board.generate(self.fen(), self.board, self.engine)
+
+
+      print('\n{}{}{}┏━ Your move ━━━━━━━━━━━┓ \n{}┗{}{}'.format(
+        Styles.PADDING_SMALL, Colors.WHITE, Colors.BOLD,\
+        Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET), move)
+
+      sleep(2)
+
       if move == self.BACK:
         self.board.pop()
         self.board.pop()
@@ -133,11 +167,18 @@ class Client(object):
       Styles.PADDING_SMALL, Styles.PADDING_SMALL, Colors.RESET, Colors.GRAY, Colors.RESET)
     )
     result = self.engine.play(self.board)
+
+    # send the AI move to the Arduino
+    self.serial.send_move(result.move)
+
     if self.play_as == chess.WHITE:
       self.board.san_move_stack_black.append(self.board.san(result.move))
     else:
       self.board.san_move_stack_white.append(self.board.san(result.move))
     self.board.push(result.move)
+
+    # before exiting the function, ensure that the Arduino has sent acknowledge that move was completed on the chess board
+    acknowledge = self.serial.wait_for_move()
 
   def fen(self):
     return self.board.fen()
